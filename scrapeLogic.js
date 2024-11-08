@@ -17,27 +17,38 @@ const scrapeLogic = async (res) => {
   try {
     const page = await browser.newPage();
 
-    await page.goto("https://developer.chrome.com/");
+    // Navigate to the page and wait until network is idle
+    await page.goto("https://developer.chrome.com/", {
+      waitUntil: "networkidle0",
+      timeout: 60000, // Increase timeout to 60 seconds
+    });
 
     // Set screen size
     await page.setViewport({ width: 1080, height: 1024 });
 
-    // Type into search box
-    await page.type(".search-box__input", "automate beyond recorder");
+    // Wait for the search button to be visible and click it
+    const searchButtonSelector = '[data-type="search"]';
+    await page.waitForSelector(searchButtonSelector, { visible: true });
+    await page.click(searchButtonSelector);
 
-    // Wait and click on first result
-    const searchResultSelector = ".search-box__link";
-    await page.waitForSelector(searchResultSelector);
-    await page.click(searchResultSelector);
+    // Wait for the search input to be visible
+    const searchInputSelector = '#searchbox input[type="search"]';
+    await page.waitForSelector(searchInputSelector, { visible: true });
+    
+    // Type the search query
+    await page.type(searchInputSelector, "automate beyond recorder");
 
-    // Locate the full title with a unique string
-    const textSelector = await page.waitForSelector(
-      "text/Customize and automate"
-    );
-    const fullTitle = await textSelector.evaluate((el) => el.textContent);
+    // Press Enter to perform the search
+    await page.keyboard.press('Enter');
+
+    // Wait for search results
+    await page.waitForSelector('a[data-card-type="article"]', { timeout: 5000 });
+
+    // Get the first article title
+    const firstArticleTitle = await page.$eval('a[data-card-type="article"]', el => el.textContent);
 
     // Print the full title
-    const logStatement = `The title of this blog post is ${fullTitle}`;
+    const logStatement = `The title of this blog post is: ${firstArticleTitle.trim()}`;
     console.log(logStatement);
     res.send(logStatement);
   } catch (e) {
